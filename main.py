@@ -18,3 +18,5 @@ ctk.set_default_color_theme("blue")
 # =========================
 app = MainWindow()
 app.mainloop()
+
+# تشغيل البرنامج# تشغيل البرنامج# تشغيل البرنامج
