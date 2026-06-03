@@ -1,22 +1,36 @@
+import sys
+import traceback
 import customtkinter as ctk
 
-from ui.main_window import MainWindow
-from database.db import create_tables, insert_default_categories
+def main():
+    try:
+        # استورد هنا لتجنّب side-effects عند الاستيراد
+        from database.db import init_db
+        from ui.main_window import MainWindow
+    except Exception as e:
+        print("Import failed:", e)
+        traceback.print_exc()
+        sys.exit(1)
 
-# 🔥 تشغيل قاعدة البيانات مرة واحدة بس
-create_tables()
-insert_default_categories()
+    try:
+        # تشغيل قاعدة البيانات مرة واحدة فقط
+        init_db()
+    except Exception as e:
+        print("Database initialization failed:", e)
+        traceback.print_exc()
 
-# =========================
-# إعدادات الشكل
-# =========================
-ctk.set_appearance_mode("light")
-ctk.set_default_color_theme("blue")
+    # إعدادات الشكل
+    ctk.set_appearance_mode("light")
+    ctk.set_default_color_theme("blue")
 
-# =========================
-# تشغيل البرنامج
-# =========================
-app = MainWindow()
-app.mainloop()
+    # تشغيل التطبيق
+    try:
+        app = MainWindow()
+        app.mainloop()
+    except Exception as e:
+        print("Application failed:", e)
+        traceback.print_exc()
+        sys.exit(1)
 
-# تشغيل البرنامج# تشغيل البرنامج# تشغيل البرنامج
+if __name__ == "__main__":
+    main()

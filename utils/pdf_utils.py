@@ -23,13 +23,15 @@ def generate_invoice_pdf(self):
 
     def ar_text(text):
         return get_display(arabic_reshaper.reshape(str(text)))
+        # ===================== 🟢 بيانات =====================
+        # نستخدم المسار الممرر من دالة الحفظ لضمان التطابق
+    pdf_path = getattr(self, "generated_pdf_path", "invoice_temp.pdf")
 
-    # ===================== 🟢 بيانات =====================
-    filename = f"invoice_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf"
+        # رقم الفاتورة (بدون ثواني) ليتطابق مع اسم الملف
     invoice_id = datetime.now().strftime("%Y%m%d%H%M")
 
     doc = SimpleDocTemplate(
-        filename,
+            pdf_path,
         pagesize=A4,
         rightMargin=25,
         leftMargin=25,
@@ -154,13 +156,30 @@ def generate_invoice_pdf(self):
     elements.append(table)
     elements.append(Spacer(1, 25))
 
-    # ===================== 🟢 TOTAL =====================
-    total = getattr(self, "final_total", 0)
+    # ===================== 🟢 RECALCULATE FROM SOURCE =====================
+
+    # إجمالي الفاتورة
+    total_before = getattr(self, "final_total", 0)
+
+    # الخصم من الـ Entry مباشرة (المصدر الحقيقي)
+    try:
+        discount_percent = float(self.discount.get() or 0)
+    except:
+        discount_percent = 0
+
+    # حساب الخصم من جديد (بدون أي اعتماد على متغيرات محفوظة)
+    discount_value = total_before * (discount_percent / 100)
+
+    # الإجمالي بعد الخصم
+    total_after = total_before - discount_value
+
     paid = float(self.paid.get()) if self.paid.get() else 0
-    remain = total - paid
+    remain = total_after - paid
 
     totals = [
-        [f"{total:.2f}", ar_text("الإجمالي")],
+        [f"{total_before:.2f}", ar_text("الإجمالي قبل الخصم")],
+        [f"{discount_percent:.0f}% = {discount_value:.2f}", ar_text("الخصم")],
+        [f"{total_after:.2f}", ar_text("الإجمالي بعد الخصم")],
         [f"{paid:.2f}", ar_text("المدفوع")],
         [f"{remain:.2f}", ar_text("المتبقي")],
     ]
@@ -184,14 +203,16 @@ def generate_invoice_pdf(self):
     ))
 
     # ===================== 🟢 BUILD =====================
+    # نقوم بعمل الـ build باستخدام المسار الذي استلمناه مسبقاً في pdf_path
     doc.build(elements, onFirstPage=draw_watermark, onLaterPages=draw_watermark)
 
     # ===================== 🟢 فتح تلقائي =====================
     try:
         if sys.platform == "win32":
-            os.startfile(filename)
-    except:
-        pass
+            # نستخدم pdf_path لأنه هو المسار الصحيح للملف الذي أنشأناه
+            os.startfile(pdf_path)
+    except Exception as e:
+        print(f"خطأ في فتح الملف: {e}")
 
     # ===================== 🟢 رسالة =====================
     from tkinter import messagebox

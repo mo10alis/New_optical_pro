@@ -7,6 +7,10 @@ from utils.settings import OWNER_PHONE, SHOP_NAME
 
 def send_whatsapp_invoice(self):
 
+    self.update_totals()  # 🔥 أهم سطر لحل مشكلة 0
+
+    # باقي الكود...
+
     # =========================
     # 📞 تنظيف رقم الهاتف (احترافي)
     # =========================
@@ -48,8 +52,37 @@ def send_whatsapp_invoice(self):
     invoice_id = datetime.now().strftime("%Y%m%d%H%M")
 
     total = getattr(self, "final_total", 0)
-    paid = float(self.paid.get()) if self.paid.get() else 0
-    remain = total - paid
+
+    # ✅ الخصم الحقيقي من الإدخال مباشرة (حل المشكلة)
+    try:
+        discount_percent = float(self.discount.get()) if self.discount.get() else 0
+    except:
+        discount_percent = 0
+
+    discount_value = total * (discount_percent / 100)
+    final_total = total - discount_value
+
+    # =========================
+    # 💵 المدفوع (تصحيح نهائي)
+    # =========================
+
+    self.parent.update()  # مهم لتحديث القيم قبل القراءة
+
+    paid_text = self.paid.get()
+
+    if paid_text:
+        paid_text = paid_text.strip()
+    else:
+        paid_text = ""
+
+    try:
+        paid = float(paid_text) if paid_text != "" else 0
+    except:
+        paid = 0
+
+    remain = final_total - paid
+
+    final_total = total - discount_value
 
     # =========================
     # 📦 الأصناف
@@ -77,44 +110,48 @@ def send_whatsapp_invoice(self):
     # 🧾 رسالة العميل
     # =========================
     msg_customer = f"""
-🧾 {SHOP_NAME}
+    🧾 {SHOP_NAME}
 
-👤 العميل: {customer}
-🆔 {invoice_id}
+    👤 العميل: {customer}
+    🆔 {invoice_id}
 
-━━━━━━━━━━━━━━
-📦 الأصناف:
-━━━━━━━━━━━━━━
-{items_text}
-━━━━━━━━━━━━━━
-💰 الإجمالي: {total:.2f} جنيه
-💵 المدفوع: {paid:.2f} جنيه
-📌 المتبقي: {remain:.2f} جنيه
-━━━━━━━━━━━━━━
+    ━━━━━━━━━━━━━━
+    📦 الأصناف:
+    ━━━━━━━━━━━━━━
+    {items_text}
+    ━━━━━━━━━━━━━━
+    💰 الإجمالي قبل الخصم: {total:.2f} جنيه
+    🎯 الخصم: {discount_percent:.0f}% = {discount_value:.2f}
+    💰 الإجمالي بعد الخصم: {final_total:.2f} جنيه
+    💵 المدفوع: {paid:.2f} جنيه
+    📌 المتبقي: {remain:.2f} جنيه
+    ━━━━━━━━━━━━━━
 
-🙏 شكراً لتعاملكم معنا ❤️
-"""
+    🙏 شكراً لتعاملكم معنا ❤️
+    """
 
     # =========================
     # 🏪 رسالة صاحب المحل
     # =========================
     msg_owner = f"""
-📢 فاتورة جديدة
+    📢 فاتورة جديدة
 
-👤 العميل: {customer}
-📞 {phone}
-🆔 {invoice_id}
+    👤 العميل: {customer}
+    📞 {phone}
+    🆔 {invoice_id}
 
-━━━━━━━━━━━━━━
-📦 الأصناف:
-━━━━━━━━━━━━━━
-{items_text}
-━━━━━━━━━━━━━━
+    ━━━━━━━━━━━━━━
+    📦 الأصناف:
+    ━━━━━━━━━━━━━━
+    {items_text}
+    ━━━━━━━━━━━━━━
 
-💰 الإجمالي: {total:.2f}
-📌 المتبقي: {remain:.2f}
-"""
-
+    💰 الإجمالي قبل الخصم: {total:.2f}
+    🎯 الخصم: {discount_percent:.0f}% = {discount_value:.2f}
+    💰 الإجمالي بعد الخصم: {final_total:.2f}
+    💵 المدفوع: {paid:.2f}
+    📌 المتبقي: {remain:.2f}
+    """
     # =========================
     # 🔗 ترميز الرسائل
     # =========================
